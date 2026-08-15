@@ -1,37 +1,171 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* ---------------------------------------------------------
+   Design tokens — "sky console" system
+   Departs from the generic blue/indigo glass look: warm
+   paper surfaces, amber/teal accents keyed to real weather
+   states, serif display numerals, mono instrument readouts.
+--------------------------------------------------------- */
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --ink-900: #101a24;
+  --ink-700: #2c3b4a;
+  --ink-500: #5b6b7c;
+  --paper-0: #fffdf9;
+  --paper-50: #faf6ee;
+  --paper-100: #f3ede0;
+  --line: rgba(16, 26, 36, 0.08);
+
+  --amber: #e6a13c;
+  --amber-dark: #c17f1f;
+  --teal: #2f7f7a;
+  --teal-dark: #1f5f5b;
+  --rose: #cf5544;
+  --violet: #6a5a8c;
+
+  --shadow-card: 0 1px 2px rgba(120, 82, 30, 0.05), 0 12px 32px -12px rgba(94, 62, 20, 0.22);
+  --shadow-card-hover: 0 1px 2px rgba(120, 82, 30, 0.06), 0 22px 44px -14px rgba(94, 62, 20, 0.28);
+}
+
+* {
+  font-family: var(--font-body);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  transition: background 0.5s ease;
+  color: var(--ink-900);
 }
 
-/* Custom animations */
+/* ---------- Typography helpers ---------- */
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings: 'ss01' 1;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Surface: the "instrument card" ---------- */
+.panel {
+  background: color-mix(in srgb, var(--paper-0) 88%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  border-radius: 1.25rem;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.panel-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* ---------- Motion ---------- */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 .fade-in {
-  animation: fadeIn 0.5s ease forwards;
+  opacity: 0;
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Scrollbar hiding for hourly forecast */
+/* Staggered cascade for top-level sections on load */
+.stagger-1 { animation-delay: 0.02s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.20s; }
+.stagger-4 { animation-delay: 0.30s; }
+.stagger-5 { animation-delay: 0.40s; }
+
+@keyframes drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2%, -3%, 0) scale(1.04); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+.drift-layer {
+  animation: drift 24s ease-in-out infinite;
+}
+.drift-layer-slow {
+  animation: drift 40s ease-in-out infinite reverse;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.9; }
+}
+.twinkle {
+  animation: twinkle 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .drift-layer, .drift-layer-slow, .twinkle {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Accessibility: visible focus ring everywhere ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--amber-dark);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* ---------- Scrollbar hiding (favorites strip, hourly rail) ---------- */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ---------- Grain overlay ---------- */
+.grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.05;
+}
+
+/* ---------- Skeleton loading ---------- */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--paper-100) 0%, var(--paper-0) 50%, var(--paper-100) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 0.75rem;
+}
+
+/* ---------- View Transition: skeleton -> content crossfade ---------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.35s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
 }

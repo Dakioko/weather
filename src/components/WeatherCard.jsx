@@ -1,32 +1,9 @@
 import React from 'react';
+import WeatherIcon from './WeatherIcon';
 
 const WeatherCard = ({ day, isCelsius }) => {
   const formatTemperature = (temp) => {
-    return isCelsius ? `${Math.round(temp)}°C` : `${Math.round((temp * 9/5) + 32)}°F`;
-  };
-
-  const getWeatherIcon = (condition) => {
-    const iconMap = {
-      '01d': '☀️',
-      '01n': '🌙',
-      '02d': '⛅',
-      '02n': '⛅',
-      '03d': '☁️',
-      '03n': '☁️',
-      '04d': '☁️',
-      '04n': '☁️',
-      '09d': '🌧️',
-      '09n': '🌧️',
-      '10d': '🌦️',
-      '10n': '🌦️',
-      '11d': '⛈️',
-      '11n': '⛈️',
-      '13d': '❄️',
-      '13n': '❄️',
-      '50d': '🌫️',
-      '50n': '🌫️',
-    };
-    return iconMap[condition] || '🌤️';
+    return isCelsius ? `${Math.round(temp)}°` : `${Math.round((temp * 9 / 5) + 32)}°`;
   };
 
   const formatDate = (dateString) => {
@@ -34,49 +11,45 @@ const WeatherCard = ({ day, isCelsius }) => {
     return {
       weekday: date.toLocaleDateString('en-US', { weekday: 'short' }),
       day: date.getDate(),
-      month: date.toLocaleDateString('en-US', { month: 'short' })
+      month: date.toLocaleDateString('en-US', { month: 'short' }),
     };
   };
 
   const date = formatDate(day.dt_txt);
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-sm hover:shadow transition-all duration-300 fade-in">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="text-2xl">
-            {getWeatherIcon(day.weather[0].icon)}
+    <div
+      className="rounded-xl p-3 fade-in transition-colors hover:bg-white/60"
+      style={{ background: 'var(--paper-50)', border: '1px solid var(--line)' }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="shrink-0" style={{ color: 'var(--ink-700)' }}>
+            <WeatherIcon code={day.weather[0].icon} size={30} />
           </div>
-          <div>
-            <div className="font-semibold text-gray-800 text-sm">{date.weekday}</div>
-            <div className="text-xs text-gray-500">{date.day} {date.month}</div>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm" style={{ color: 'var(--ink-900)' }}>{date.weekday}</div>
+            <div className="text-xs font-mono" style={{ color: 'var(--ink-500)' }}>{date.day} {date.month}</div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold text-gray-800">
-                {formatTemperature(day.main.temp_max)}
-              </span>
-              <span className="text-gray-500 text-xs">
-                {formatTemperature(day.main.temp_min)}
-              </span>
-            </div>
-            <div className="text-xs text-gray-600 capitalize truncate max-w-[80px]">
+
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs capitalize truncate max-w-[90px]" style={{ color: 'var(--ink-700)' }}>
               {day.weather[0].description}
-            </div>
+            </p>
           </div>
-          
-          <div className="flex gap-2">
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Humidity</p>
-              <p className="font-semibold text-gray-700 text-xs">{day.main.humidity}%</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Wind</p>
-              <p className="font-semibold text-gray-700 text-xs">{Math.round(day.wind.speed)} m/s</p>
-            </div>
+          <div className="flex gap-2 font-mono text-[11px]" style={{ color: 'var(--ink-500)' }}>
+            <span>💧{day.main.humidity}%</span>
+            <span>{Math.round(day.wind.speed)}m/s</span>
+          </div>
+          <div className="flex items-baseline gap-1 font-mono">
+            <span className="text-base font-semibold" style={{ color: 'var(--ink-900)' }}>
+              {formatTemperature(day.main.temp_max)}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--ink-500)' }}>
+              {formatTemperature(day.main.temp_min)}
+            </span>
           </div>
         </div>
       </div>
