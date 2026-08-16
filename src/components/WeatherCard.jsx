@@ -1,10 +1,11 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
 
-const WeatherCard = ({ day, isCelsius }) => {
-  const formatTemperature = (temp) => {
-    return isCelsius ? `${Math.round(temp)}°` : `${Math.round((temp * 9 / 5) + 32)}°`;
-  };
+const WeatherCard = ({ day, unit }) => {
+  // Forecast data is fetched with units=<unit> already (Celsius/m/s for
+  // metric, Fahrenheit/mph for imperial) — just round and label, no math.
+  const formatTemperature = (temp) => `${Math.round(temp)}°`;
+  const windUnit = unit === 'metric' ? 'm/s' : 'mph';
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -40,8 +41,8 @@ const WeatherCard = ({ day, isCelsius }) => {
             </p>
           </div>
           <div className="flex gap-2 font-mono text-[11px]" style={{ color: 'var(--ink-500)' }}>
-            <span>💧{day.main.humidity}%</span>
-            <span>{Math.round(day.wind.speed)}m/s</span>
+            <span>RH {day.main.humidity}%</span>
+            <span>{Math.round(day.wind.speed)}{windUnit}</span>
           </div>
           <div className="flex items-baseline gap-1 font-mono">
             <span className="text-base font-semibold" style={{ color: 'var(--ink-900)' }}>

@@ -4,8 +4,6 @@ import WeatherCard from './WeatherCard';
 const Forecast = ({ data, unit }) => {
   if (!data || !data.list) return null;
 
-  const isCelsius = unit === 'metric';
-
   // Group forecasts by day and take one reading per day (around noon)
   const dailyForecasts = data.list.reduce((acc, forecast) => {
     const date = forecast.dt_txt.split(' ')[0];
@@ -27,7 +25,7 @@ const Forecast = ({ data, unit }) => {
       </div>
       <div className="space-y-2">
         {forecastArray.map((day, index) => (
-          <WeatherCard key={index} day={day} isCelsius={isCelsius} />
+          <WeatherCard key={index} day={day} unit={unit} />
         ))}
       </div>
     </div>

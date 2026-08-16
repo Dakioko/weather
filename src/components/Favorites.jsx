@@ -4,8 +4,18 @@ import WeatherIcon from './WeatherIcon';
 const Favorites = ({ favorites, unit, onSelect }) => {
   if (!favorites.length) return null;
 
-  const formatTemperature = (temp) => {
-    return unit === 'metric' ? `${Math.round(temp)}°C` : `${Math.round((temp * 9 / 5) + 32)}°F`;
+  // fav.temp was captured whenever the city was favorited, in whichever
+  // unit was active then (fav.tempUnit). Only convert if that differs
+  // from the currently selected unit — and only in the correct direction.
+  // Favorites saved before this fix have no tempUnit; metric is assumed
+  // as a best-effort default rather than silently mis-converting them.
+  const formatTemperature = (fav) => {
+    const sourceUnit = fav.tempUnit || 'metric';
+    let value = fav.temp;
+    if (sourceUnit !== unit) {
+      value = sourceUnit === 'metric' ? (value * 9) / 5 + 32 : ((value - 32) * 5) / 9;
+    }
+    return `${Math.round(value)}°`;
   };
 
   return (
@@ -31,7 +41,7 @@ const Favorites = ({ favorites, unit, onSelect }) => {
               <div className="text-left">
                 <div className="font-medium text-sm truncate max-w-[80px]" style={{ color: 'var(--ink-900)' }}>{fav.name}</div>
                 <div className="font-mono font-semibold text-sm" style={{ color: 'var(--ink-900)' }}>
-                  {formatTemperature(fav.temp)}
+                  {formatTemperature(fav)}
                 </div>
               </div>
             </div>

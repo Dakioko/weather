@@ -2,9 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/ico.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Horizon Viewer</title>
+    <title>Weather Dashboard</title>
+    <meta name="description" content="Real-time weather, hourly and 5-day forecasts, and air quality." />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2c3b4a" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <!-- iOS doesn't read display/theme_color from manifest.json, so these
+         are set explicitly for a standalone install from the share sheet. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Weather" />
   </head>
   <body>
     <div id="root"></div>

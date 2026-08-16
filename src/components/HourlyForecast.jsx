@@ -4,12 +4,11 @@ import WeatherIcon from './WeatherIcon';
 const HourlyForecast = ({ data, unit }) => {
   if (!data || !data.list) return null;
 
-  const isCelsius = unit === 'metric';
   const hourlyData = data.list.slice(0, 8); // 8 readings = 24 hours
 
-  const formatTemperature = (temp) => {
-    return isCelsius ? `${Math.round(temp)}°` : `${Math.round((temp * 9 / 5) + 32)}°`;
-  };
+  // Data is fetched with units=<unit> already — round and label only.
+  const formatTemperature = (temp) => `${Math.round(temp)}°`;
+  const windUnit = unit === 'metric' ? 'm/s' : 'mph';
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp * 1000);
@@ -101,7 +100,7 @@ const HourlyForecast = ({ data, unit }) => {
               </div>
               <div className="flex justify-center gap-2.5 mt-2 font-mono text-[10px]" style={{ color: 'var(--ink-500)' }}>
                 <span>RH {hour.main.humidity}%</span>
-                <span>{Math.round(hour.wind.speed)}m/s</span>
+                <span>{Math.round(hour.wind.speed)}{windUnit}</span>
               </div>
               {typeof hour.pop === 'number' && (
                 <div className="mt-2" title={`${Math.round(hour.pop * 100)}% chance of precipitation`}>

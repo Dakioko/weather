@@ -1,28 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import WeatherIcon from './WeatherIcon';
 import useCountUp from '../hooks/useCountUp';
 
 const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite }) => {
-  const [isCelsius, setIsCelsius] = useState(unit === 'metric');
   const animatedTemp = useCountUp(data?.main?.temp ?? 0);
 
+  // The API is fetched with units=<unit> already, so data.main.temp and
+  // data.wind.speed arrive pre-converted (Celsius/m/s for metric,
+  // Fahrenheit/mph for imperial). No client-side math needed here —
+  // applying the C->F formula on top of an already-Fahrenheit value was
+  // the source of a real display bug (e.g. an actual 75°F rendering as
+  // 167°F). We only ever format/round what the API already gave us.
   const toggleUnit = () => {
-    const newUnit = isCelsius ? 'imperial' : 'metric';
-    setIsCelsius(!isCelsius);
-    onToggleUnit(newUnit);
+    onToggleUnit(unit === 'metric' ? 'imperial' : 'metric');
   };
 
-  const formatTemperature = (temp) => {
-    return `${toDisplayValue(temp)}°`;
-  };
+  const formatTemperature = (temp) => `${toDisplayValue(temp)}°`;
 
-  const toDisplayValue = (temp) => {
-    return isCelsius ? Math.round(temp) : Math.round((temp * 9 / 5) + 32);
-  };
+  const toDisplayValue = (temp) => Math.round(temp);
 
-  const formatWindSpeed = (speed) => {
-    return isCelsius ? `${Math.round(speed)} m/s` : `${Math.round(speed * 2.237)} mph`;
-  };
+  const formatWindSpeed = (speed) => `${Math.round(speed)} ${unit === 'metric' ? 'm/s' : 'mph'}`;
 
   const formatTime = (timestamp) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -92,11 +89,11 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
           <div className="flex items-center gap-2">
             <button
               onClick={toggleUnit}
-              aria-label={`Switch to ${isCelsius ? 'Fahrenheit' : 'Celsius'}`}
+              aria-label={`Switch to ${unit === 'metric' ? 'Fahrenheit' : 'Celsius'}`}
               className="px-3.5 py-2 rounded-full text-white text-xs font-mono font-medium hover:opacity-90 active:scale-95 transition-all shadow-sm"
               style={{ background: 'var(--ink-700)' }}
             >
-              °{isCelsius ? 'F' : 'C'}
+              °{unit === 'metric' ? 'F' : 'C'}
             </button>
             <button
               onClick={onToggleFavorite}
