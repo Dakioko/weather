@@ -1,22 +1,18 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
+import { formatCityDate } from '../utils/cityTime';
 
-const WeatherCard = ({ day, unit }) => {
+const WeatherCard = ({ day, unit, timezone = 0 }) => {
   // Forecast data is fetched with units=<unit> already (Celsius/m/s for
   // metric, Fahrenheit/mph for imperial) — just round and label, no math.
   const formatTemperature = (temp) => `${Math.round(temp)}°`;
   const windUnit = unit === 'metric' ? 'm/s' : 'mph';
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return {
-      weekday: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      day: date.getDate(),
-      month: date.toLocaleDateString('en-US', { month: 'short' }),
-    };
-  };
-
-  const date = formatDate(day.dt_txt);
+  // day.dt_txt is a UTC string with no timezone marker, so parsing it
+  // with `new Date()` gets silently interpreted in the browser's local
+  // timezone — wrong for any city that isn't the viewer's own. day.dt is
+  // an unambiguous unix timestamp; shift it by the city's own offset.
+  const date = formatCityDate(day.dt, timezone);
 
   return (
     <div

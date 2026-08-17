@@ -245,7 +245,7 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
               !isFocused && (
                 <kbd
                   className="hidden md:inline-flex items-center gap-0.5 absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-[10px] px-1.5 py-1 rounded-md pointer-events-none select-none"
-                  style={{ background: 'var(--paper-100)', color: 'var(--ink-500)', border: '1px solid var(--line)' }}
+                  style={{ background: 'var(--ink-700)', color: 'var(--paper-0)' }}
                   aria-hidden="true"
                 >
                   {isMac ? '⌘' : 'Ctrl'} K

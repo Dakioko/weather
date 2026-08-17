@@ -360,24 +360,24 @@ function App() {
         <div className="max-w-7xl mx-auto relative">
           <header className="mb-6 fade-in relative z-50">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div>
-                  <h1 className="font-display text-2xl md:text-3xl font-semibold text-white drop-shadow-sm">
-                    Weather Dashboard
-                  </h1>
-                  <p className="text-sm mt-0.5 text-white/80">Real-time weather intelligence</p>
-                </div>
-                <ThemeToggle theme={theme} onToggle={toggleTheme} />
+              <div>
+                <h1 className="font-display text-2xl md:text-3xl font-semibold text-white drop-shadow-sm">
+                  Weather Dashboard
+                </h1>
+                <p className="text-sm mt-0.5 text-white/80">Real-time weather intelligence</p>
               </div>
 
-              <div className="w-full md:w-auto">
-                <SearchBar
-                  onSearch={fetchWeatherData}
-                  onLocationClick={handleLocationClick}
-                  favorites={favorites}
-                  onFavoriteSelect={(city) => fetchWeatherData(city)}
-                  unit={unit}
-                />
+              <div className="w-full md:w-auto flex items-center gap-3">
+                <div className="flex-1 min-w-0 md:flex-initial">
+                  <SearchBar
+                    onSearch={fetchWeatherData}
+                    onLocationClick={handleLocationClick}
+                    favorites={favorites}
+                    onFavoriteSelect={(city) => fetchWeatherData(city)}
+                    unit={unit}
+                  />
+                </div>
+                <ThemeToggle theme={theme} onToggle={toggleTheme} />
               </div>
             </div>
 

@@ -1,22 +1,19 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
+import { formatCityHour } from '../utils/cityTime';
 
 const HourlyForecast = ({ data, unit }) => {
   if (!data || !data.list) return null;
 
   const hourlyData = data.list.slice(0, 8); // 8 readings = 24 hours
+  const timezoneOffset = data.city?.timezone ?? 0;
 
   // Data is fetched with units=<unit> already — round and label only.
   const formatTemperature = (temp) => `${Math.round(temp)}°`;
   const windUnit = unit === 'metric' ? 'm/s' : 'mph';
 
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp * 1000);
-    const hours = date.getHours();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}${ampm}`;
-  };
+  // City's own local hour, not the viewer's device timezone.
+  const formatTime = (timestamp) => formatCityHour(timestamp, timezoneOffset);
 
   const temps = hourlyData.map((h) => h.main.temp);
   const maxTemp = Math.max(...temps);

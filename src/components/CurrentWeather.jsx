@@ -1,6 +1,7 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
 import useCountUp from '../hooks/useCountUp';
+import { formatCityTime, formatCityDate } from '../utils/cityTime';
 
 const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite }) => {
   const animatedTemp = useCountUp(data?.main?.temp ?? 0);
@@ -11,19 +12,21 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
   // applying the C->F formula on top of an already-Fahrenheit value was
   // the source of a real display bug (e.g. an actual 75°F rendering as
   // 167°F). We only ever format/round what the API already gave us.
-  const toggleUnit = () => {
-    onToggleUnit(unit === 'metric' ? 'imperial' : 'metric');
-  };
-
   const formatTemperature = (temp) => `${toDisplayValue(temp)}°`;
+
+  // The hero number gets the unit letter explicitly — it's the one value
+  // on screen someone might read in isolation (e.g. a screenshot), so it
+  // shouldn't depend on noticing the segmented toggle nearby to know
+  // which scale it's in.
+  const formatHeroTemperature = (temp) => `${toDisplayValue(temp)}°${unit === 'metric' ? 'C' : 'F'}`;
 
   const toDisplayValue = (temp) => Math.round(temp);
 
   const formatWindSpeed = (speed) => `${Math.round(speed)} ${unit === 'metric' ? 'm/s' : 'mph'}`;
 
-  const formatTime = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  };
+  // Sunrise/sunset and "today's date" must reflect the searched city's
+  // own clock, not the viewer's device timezone — see utils/cityTime.js.
+  const formatTime = (timestamp) => formatCityTime(timestamp, data?.timezone ?? 0);
 
   // ---- Icons ----
   const ThermometerIcon = () => (
@@ -83,18 +86,44 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
               {data.name}, {data.sys.country}
             </h1>
             <p className="text-sm mt-0.5" style={{ color: 'var(--ink-500)' }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              {(() => {
+                const { weekdayLong, month, day } = formatCityDate(data.dt, data?.timezone ?? 0);
+                return `${weekdayLong}, ${month} ${day}`;
+              })()}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleUnit}
-              aria-label={`Switch to ${unit === 'metric' ? 'Fahrenheit' : 'Celsius'}`}
-              className="px-3.5 py-2 rounded-full text-white text-xs font-mono font-medium hover:opacity-90 active:scale-95 transition-all shadow-sm"
-              style={{ background: 'var(--ink-700)' }}
+            <div
+              role="group"
+              aria-label="Temperature unit"
+              className="flex items-center rounded-full p-0.5 gap-0.5"
+              style={{ background: 'var(--paper-100)', border: '1px solid var(--line)' }}
             >
-              °{unit === 'metric' ? 'F' : 'C'}
-            </button>
+              <button
+                onClick={() => unit !== 'metric' && onToggleUnit('metric')}
+                aria-pressed={unit === 'metric'}
+                aria-label="Celsius"
+                className="px-2.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
+                style={{
+                  background: unit === 'metric' ? 'var(--ink-700)' : 'transparent',
+                  color: unit === 'metric' ? '#fff' : 'var(--ink-500)',
+                }}
+              >
+                °C
+              </button>
+              <button
+                onClick={() => unit !== 'imperial' && onToggleUnit('imperial')}
+                aria-pressed={unit === 'imperial'}
+                aria-label="Fahrenheit"
+                className="px-2.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
+                style={{
+                  background: unit === 'imperial' ? 'var(--ink-700)' : 'transparent',
+                  color: unit === 'imperial' ? '#fff' : 'var(--ink-500)',
+                }}
+              >
+                °F
+              </button>
+            </div>
             <button
               onClick={onToggleFavorite}
               aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
@@ -121,8 +150,15 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
                 </div>
                 <div>
                   <div className="flex items-start gap-2">
-                    <div className="font-display font-semibold text-6xl md:text-7xl leading-none tabular-nums" style={{ color: 'var(--ink-900)' }}>
+                    <div
+                      className="font-display font-semibold text-6xl md:text-7xl leading-none tabular-nums flex items-start"
+                      style={{ color: 'var(--ink-900)' }}
+                      aria-label={formatHeroTemperature(animatedTemp)}
+                    >
                       {formatTemperature(animatedTemp)}
+                      <span className="text-xl md:text-2xl font-medium mt-1 md:mt-2 ml-0.5" style={{ color: 'var(--ink-500)' }} aria-hidden="true">
+                        {unit === 'metric' ? 'C' : 'F'}
+                      </span>
                     </div>
                     {(() => {
                       const delta = toDisplayValue(data.main.feels_like) - toDisplayValue(data.main.temp);

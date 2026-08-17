@@ -1,16 +1,23 @@
 import React from 'react';
 import WeatherCard from './WeatherCard';
+import { cityDateKey, formatCityDate } from '../utils/cityTime';
 
 const Forecast = ({ data, unit }) => {
   if (!data || !data.list) return null;
 
-  // Group forecasts by day and take one reading per day (around noon)
-  const dailyForecasts = data.list.reduce((acc, forecast) => {
-    const date = forecast.dt_txt.split(' ')[0];
-    const hour = new Date(forecast.dt_txt).getHours();
+  const timezoneOffset = data.city?.timezone ?? 0;
 
-    if (hour === 12 || !acc[date]) {
-      acc[date] = forecast;
+  // Group forecasts by the city's own calendar day (not UTC's — for a
+  // city far from UTC, local midnight can fall on a different date than
+  // dt_txt's UTC-based date substring, which previously misgrouped
+  // entries), and pick the reading closest to local noon to represent
+  // each day rather than whichever happened to be seen first.
+  const dailyForecasts = data.list.reduce((acc, forecast) => {
+    const key = cityDateKey(forecast.dt, timezoneOffset);
+    const hour = formatCityDate(forecast.dt, timezoneOffset).hour;
+
+    if (hour === 12 || !acc[key]) {
+      acc[key] = forecast;
     }
     return acc;
   }, {});
@@ -25,7 +32,7 @@ const Forecast = ({ data, unit }) => {
       </div>
       <div className="space-y-2">
         {forecastArray.map((day, index) => (
-          <WeatherCard key={index} day={day} unit={unit} />
+          <WeatherCard key={index} day={day} unit={unit} timezone={timezoneOffset} />
         ))}
       </div>
     </div>
