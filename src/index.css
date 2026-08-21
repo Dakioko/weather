@@ -147,6 +147,9 @@ body {
   * {
     transition-duration: 0.01ms !important;
   }
+  html {
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---------- Accessibility: visible focus ring everywhere ---------- */

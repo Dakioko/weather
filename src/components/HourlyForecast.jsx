@@ -1,6 +1,7 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
 import { formatCityHour } from '../utils/cityTime';
+import { celsiusToDisplay, msToDisplay, windUnitLabel } from '../utils/units';
 
 const HourlyForecast = ({ data, unit }) => {
   if (!data || !data.list) return null;
@@ -8,9 +9,12 @@ const HourlyForecast = ({ data, unit }) => {
   const hourlyData = data.list.slice(0, 8); // 8 readings = 24 hours
   const timezoneOffset = data.city?.timezone ?? 0;
 
-  // Data is fetched with units=<unit> already — round and label only.
-  const formatTemperature = (temp) => `${Math.round(temp)}°`;
-  const windUnit = unit === 'metric' ? 'm/s' : 'mph';
+  // Data is always fetched in metric — convert for display here. The
+  // graph below still uses the raw Celsius values for its min/max
+  // scaling, which is fine: a linear unit conversion doesn't change
+  // relative positions, only the numbers printed on the cards need it.
+  const formatTemperature = (temp) => `${Math.round(celsiusToDisplay(temp, unit))}°`;
+  const windUnit = windUnitLabel(unit);
 
   // City's own local hour, not the viewer's device timezone.
   const formatTime = (timestamp) => formatCityHour(timestamp, timezoneOffset);
@@ -75,12 +79,15 @@ const HourlyForecast = ({ data, unit }) => {
           </svg>
         </div>
 
-        {/* Hourly cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 md:gap-2.5">
+        {/* Hourly cards — horizontal swipeable row on mobile (a hard
+            2-column grid was forcing 4 rows for 8 cards, a lot of
+            vertical scroll for one panel); full grid from sm: up where
+            there's enough width to show them without scrolling. */}
+        <div className="flex sm:grid overflow-x-auto sm:overflow-visible scrollbar-hide snap-x snap-mandatory sm:snap-none gap-2 md:gap-2.5 sm:grid-cols-4 md:grid-cols-8 pb-1 sm:pb-0">
           {hourlyData.map((hour, index) => (
             <div
               key={index}
-              className="rounded-xl p-3 text-center transition-all duration-300 hover:-translate-y-0.5"
+              className="rounded-xl p-3 text-center transition-all duration-300 hover:-translate-y-0.5 shrink-0 w-[104px] sm:w-auto snap-start"
               style={{ background: 'var(--paper-50)', border: '1px solid var(--line)' }}
             >
               <div className="font-mono text-xs mb-1" style={{ color: 'var(--ink-500)' }}>
@@ -97,7 +104,7 @@ const HourlyForecast = ({ data, unit }) => {
               </div>
               <div className="flex justify-center gap-2.5 mt-2 font-mono text-[10px]" style={{ color: 'var(--ink-500)' }}>
                 <span>RH {hour.main.humidity}%</span>
-                <span>{Math.round(hour.wind.speed)}{windUnit}</span>
+                <span>{Math.round(msToDisplay(hour.wind.speed, unit))}{windUnit}</span>
               </div>
               {typeof hour.pop === 'number' && (
                 <div className="mt-2" title={`${Math.round(hour.pop * 100)}% chance of precipitation`}>

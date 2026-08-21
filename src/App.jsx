@@ -10,20 +10,36 @@ import AirQuality from './components/AirQuality';
 import Favorites from './components/Favorites';
 import Toast from './components/Toast';
 import ThemeToggle from './components/ThemeToggle';
+import WelcomeState from './components/WelcomeState';
 import usePullToRefresh from './hooks/usePullToRefresh';
 import useOnlineStatus from './hooks/useOnlineStatus';
 import { getWeather, getWeatherByCoords, getForecast, getForecastByCoords, getAirQuality } from './WeatherApi';
+import { formatCityTime } from './utils/cityTime';
+import { celsiusToDisplay } from './utils/units';
 
 function App() {
+  // Read once per mount: true only if a previous visit saved a city.
+  // Used to decide both whether `loading` should start true (about to
+  // auto-fetch) and whether this is a first-run visitor who should see
+  // the welcome state instead — computed up front so `loading` never
+  // has to flash true-then-false before the welcome state can render.
+  const hasSavedCity = typeof window !== 'undefined' && !!localStorage.getItem('lastSearchedCity');
+
   const [weatherData, setWeatherData] = useState(null);
   const [forecastData, setForecastData] = useState(null);
   const [airQualityData, setAirQualityData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSavedCity);
   const [error, setError] = useState(null);
   const [unit, setUnit] = useState('metric');
   const [lastSearched, setLastSearched] = useState(() => {
     return localStorage.getItem('lastSearchedCity') || 'Nairobi';
   });
+
+  // Captured once, before the mount effect runs anything: true only for a
+  // visitor who has never searched before. Used to show a welcome state
+  // instead of silently loading Nairobi on their behalf — a default they
+  // never asked for and might not realize is just a placeholder.
+  const [isFirstRun] = useState(() => !hasSavedCity);
 
   const [favorites, setFavorites] = useState(() => {
     const saved = localStorage.getItem('weatherFavorites');
@@ -64,12 +80,6 @@ function App() {
     }
   }, []);
 
-  // Guards the [unit] effect below so it only runs on unit *changes*,
-  // not on the initial mount — the mount effect already does that fetch.
-  // (Previously both effects fired on load, racing two fetches against
-  // each other and occasionally leaving stale data on screen.)
-  const hasMountedRef = useRef(false);
-
   // Shared across fetchWeatherData / fetchWeatherByCoords / silentRefresh:
   // each call claims the next id, and only the request still holding the
   // *latest* id is allowed to write its results to state. If you search a
@@ -78,6 +88,14 @@ function App() {
   const requestIdRef = useRef(0);
 
   const fetchWeatherData = useCallback(async (city) => {
+    // A new city was explicitly requested (search, favorite, quick-pick,
+    // error retry) — scroll back to the top rather than leaving the
+    // visitor stranded wherever they'd scrolled to on the previous city
+    // (e.g. deep in the AQI section) while the new one loads in above
+    // them. Not called from silentRefresh, which intentionally leaves
+    // scroll untouched since it's refreshing the same city in place.
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+
     if (!API_KEY) {
       setError('API key not configured. Please add VITE_WEATHER_API_KEY to your .env file');
       setLoading(false);
@@ -90,8 +108,11 @@ function App() {
     setAirQualityData(null);
 
     try {
-      const weather = await getWeather(city, unit);
-      const forecast = await getForecast(city, unit);
+      // Always fetched in metric — `unit` is now a pure display
+      // preference (see toggleUnit below), never a network parameter, so
+      // switching units doesn't require a refetch at all.
+      const weather = await getWeather(city, 'metric');
+      const forecast = await getForecast(city, 'metric');
       if (requestId !== requestIdRef.current) return; // superseded — drop silently
 
       try {
@@ -118,9 +139,10 @@ function App() {
       return;
     }
     if (requestId === requestIdRef.current) finishLoading();
-  }, [API_KEY, unit, finishLoading]);
+  }, [API_KEY, finishLoading]);
 
   const fetchWeatherByCoords = useCallback(async (lat, lon) => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
     if (!API_KEY) return;
 
     const requestId = ++requestIdRef.current;
@@ -129,8 +151,8 @@ function App() {
     setAirQualityData(null);
 
     try {
-      const weather = await getWeatherByCoords(lat, lon, unit);
-      const forecast = await getForecastByCoords(lat, lon, unit);
+      const weather = await getWeatherByCoords(lat, lon, 'metric');
+      const forecast = await getForecastByCoords(lat, lon, 'metric');
       if (requestId !== requestIdRef.current) return;
 
       try {
@@ -157,7 +179,7 @@ function App() {
       return;
     }
     if (requestId === requestIdRef.current) finishLoading();
-  }, [API_KEY, unit, finishLoading]);
+  }, [API_KEY, finishLoading]);
 
   // Used by pull-to-refresh only: re-fetches quietly without toggling the
   // global `loading` flag, so existing content stays on screen instead of
@@ -167,8 +189,8 @@ function App() {
     if (!API_KEY || !lastSearched) return;
     const requestId = ++requestIdRef.current;
     try {
-      const weather = await getWeather(lastSearched, unit);
-      const forecast = await getForecast(lastSearched, unit);
+      const weather = await getWeather(lastSearched, 'metric');
+      const forecast = await getForecast(lastSearched, 'metric');
       if (requestId !== requestIdRef.current) return;
       try {
         const aqi = await getAirQuality(weather.coord.lat, weather.coord.lon);
@@ -185,7 +207,7 @@ function App() {
       showToast(!navigator.onLine ? "You're offline" : "Couldn't refresh — try again");
       console.error('Pull-to-refresh error:', err);
     }
-  }, [API_KEY, unit, lastSearched]);
+  }, [API_KEY, lastSearched]);
 
   const { pullDistance, isRefreshing, threshold: pullThreshold } = usePullToRefresh(silentRefresh);
 
@@ -219,6 +241,9 @@ function App() {
   };
 
   const handleToggleUnit = (newUnit) => {
+    // Purely a display preference now — data is always fetched in
+    // metric, so this no longer needs to trigger a refetch. See
+    // fetchWeatherData/fetchWeatherByCoords/silentRefresh above.
     setUnit(newUnit);
   };
 
@@ -239,9 +264,14 @@ function App() {
           name: weatherData.name,
           country: weatherData.sys.country,
           temp: weatherData.main.temp,
-          tempUnit: unit, // remember which unit `temp` was captured in, so
-                           // Favorites can convert correctly later instead
-                           // of assuming it's always Celsius
+          // weatherData.main.temp is always Celsius now (data is fetched
+          // in metric unconditionally — see fetchWeatherData). Previously
+          // this recorded the *display* unit selected at favorite-time,
+          // which broke once fetching stopped following that same unit:
+          // the tag would say "imperial" while the stored value was
+          // actually still Celsius, causing Favorites to convert it
+          // backwards. Always metric now, by construction.
+          tempUnit: 'metric',
           condition: weatherData.weather[0].main,
           icon: weatherData.weather[0].icon,
         },
@@ -252,20 +282,18 @@ function App() {
     localStorage.setItem('weatherFavorites', JSON.stringify(newFavorites));
   };
 
-  // Initial load — the only place the very first fetch happens.
+  // Initial load — the only place the very first fetch happens. A
+  // brand-new visitor (no saved city) sees the welcome state instead of
+  // an unannounced Nairobi; loading only starts once they act.
   useEffect(() => {
+    if (isFirstRun) {
+      setLoading(false);
+      return;
+    }
     const lastCity = localStorage.getItem('lastSearchedCity') || 'Nairobi';
     fetchWeatherData(lastCity);
-    hasMountedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Re-fetch only when the unit actually changes after mount.
-  useEffect(() => {
-    if (!hasMountedRef.current) return;
-    if (lastSearched) fetchWeatherData(lastSearched);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unit]);
 
   const LoadingIcon = () => (
     <svg className="w-10 h-10 animate-spin" style={{ color: 'var(--amber)' }} fill="none" viewBox="0 0 24 24">
@@ -306,6 +334,14 @@ function App() {
           paddingTop: isOnline ? undefined : '3.25rem',
         }}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[9999] focus:px-4 focus:py-2 focus:rounded-lg focus:font-medium focus:text-sm"
+          style={{ background: 'var(--ink-900)', color: '#fff' }}
+        >
+          Skip to main content
+        </a>
+
         {/* Offline banner */}
         <div
           className="fixed top-0 inset-x-0 z-[60] transition-transform duration-300 ease-out"
@@ -360,11 +396,18 @@ function App() {
         <div className="max-w-7xl mx-auto relative">
           <header className="mb-6 fade-in relative z-50">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-              <div>
-                <h1 className="font-display text-2xl md:text-3xl font-semibold text-white drop-shadow-sm">
+              <div
+                className="px-4 py-2.5 rounded-2xl inline-block"
+                style={{
+                  background: 'color-mix(in srgb, var(--ink-900) 60%, transparent)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                }}
+              >
+                <h1 className="font-display text-2xl md:text-3xl font-semibold text-white">
                   Weather Dashboard
                 </h1>
-                <p className="text-sm mt-0.5 text-white/80">Real-time weather intelligence</p>
+                <p className="text-sm mt-0.5 text-white/90">Real-time weather intelligence</p>
               </div>
 
               <div className="w-full md:w-auto flex items-center gap-3">
@@ -388,11 +431,11 @@ function App() {
             />
           </header>
 
-          <main className="relative z-10">
+          <main className="relative z-10" id="main-content" tabIndex={-1}>
             {loading ? (
               <SkeletonPanels />
             ) : error ? (
-              <div className="flex flex-col items-center justify-center min-h-[50vh] fade-in panel p-10 max-w-md mx-auto text-center">
+              <div role="alert" className="flex flex-col items-center justify-center min-h-[50vh] fade-in panel p-10 max-w-md mx-auto text-center">
                 <ErrorIcon />
                 <h3 className="font-display text-xl font-semibold mt-4 mb-1" style={{ color: 'var(--ink-900)' }}>
                   Couldn't load that
@@ -438,26 +481,40 @@ function App() {
                   )}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <WelcomeState onSelectCity={fetchWeatherData} onUseLocation={handleLocationClick} />
+            )}
           </main>
 
-          <footer className="mt-8 pt-6 relative z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="text-white/80 text-sm text-center md:text-left">
+          <footer className="mt-8 relative z-10">
+            <div
+              className="flex flex-col md:flex-row justify-between items-center gap-4 px-4 py-4 rounded-2xl"
+              style={{
+                background: 'color-mix(in srgb, var(--ink-900) 60%, transparent)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
+            >
+              <div className="text-white/90 text-sm text-center md:text-left">
                 <p>
                   Powered by{' '}
                   <a href="https://openweathermap.org/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
                     OpenWeatherMap
                   </a>
                 </p>
-                <p className="mt-0.5 text-xs">Data updates every 3 hours</p>
+                <p className="mt-0.5 text-xs text-white/75">
+                  Built by{' '}
+                  <a href="https://skioko.netlify.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                    Stephen Kioko
+                  </a>
+                </p>
               </div>
 
               <div className="flex items-center gap-4">
                 {weatherData && (
                   <button
                     onClick={() => {
-                      const shareText = `Weather in ${weatherData.name}: ${Math.round(weatherData.main.temp)}°C, ${weatherData.weather[0].description}`;
+                      const shareText = `Weather in ${weatherData.name}: ${Math.round(celsiusToDisplay(weatherData.main.temp, unit))}°${unit === 'metric' ? 'C' : 'F'}, ${weatherData.weather[0].description}`;
                       if (navigator.share) {
                         navigator.share({ title: `Weather in ${weatherData.name}`, text: shareText });
                       } else {
@@ -465,7 +522,7 @@ function App() {
                         showToast('Weather info copied to clipboard');
                       }
                     }}
-                    className="text-white/90 hover:text-white text-sm font-medium flex items-center gap-1.5"
+                    className="text-white/90 hover:text-white text-sm font-medium flex items-center gap-1.5 p-2 -m-2 rounded-lg hover:bg-white/10 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -473,8 +530,8 @@ function App() {
                     Share
                   </button>
                 )}
-                <p className="text-white/60 text-xs font-mono">
-                  {weatherData ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                <p className="text-white/75 text-xs font-mono">
+                  {weatherData ? formatCityTime(weatherData.dt, weatherData.timezone ?? 0) : '--:--'}
                 </p>
               </div>
             </div>

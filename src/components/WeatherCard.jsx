@@ -1,12 +1,13 @@
 import React from 'react';
 import WeatherIcon from './WeatherIcon';
 import { formatCityDate } from '../utils/cityTime';
+import { celsiusToDisplay, msToDisplay, windUnitLabel } from '../utils/units';
 
 const WeatherCard = ({ day, unit, timezone = 0 }) => {
-  // Forecast data is fetched with units=<unit> already (Celsius/m/s for
-  // metric, Fahrenheit/mph for imperial) — just round and label, no math.
-  const formatTemperature = (temp) => `${Math.round(temp)}°`;
-  const windUnit = unit === 'metric' ? 'm/s' : 'mph';
+  // Forecast data is always fetched in metric — convert for display here.
+  // See utils/units.js for why this is the only place that math happens.
+  const formatTemperature = (temp) => `${Math.round(celsiusToDisplay(temp, unit))}°`;
+  const windUnit = windUnitLabel(unit);
 
   // day.dt_txt is a UTC string with no timezone marker, so parsing it
   // with `new Date()` gets silently interpreted in the browser's local
@@ -38,7 +39,7 @@ const WeatherCard = ({ day, unit, timezone = 0 }) => {
           </div>
           <div className="flex gap-2 font-mono text-[11px]" style={{ color: 'var(--ink-500)' }}>
             <span>RH {day.main.humidity}%</span>
-            <span>{Math.round(day.wind.speed)}{windUnit}</span>
+            <span>{Math.round(msToDisplay(day.wind.speed, unit))}{windUnit}</span>
           </div>
           <div className="flex items-baseline gap-1 font-mono">
             <span className="text-base font-semibold" style={{ color: 'var(--ink-900)' }}>

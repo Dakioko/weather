@@ -27,7 +27,7 @@ const ThemeToggle = ({ theme, onToggle }) => (
     onClick={onToggle}
     aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-    className="p-2.5 rounded-full transition-all hover:scale-105 active:scale-95"
+    className="p-3 rounded-full transition-all hover:scale-105 active:scale-95"
     style={{ background: 'rgba(255,255,255,0.16)', color: '#fff', backdropFilter: 'blur(8px)' }}
   >
     {theme === 'dark' ? <SunIcon /> : <MoonIcon />}

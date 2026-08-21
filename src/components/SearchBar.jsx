@@ -28,6 +28,13 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
     return `${Math.round(value)}°`;
   };
 
+  // The Geocoding API includes `state` (mainly for US results), which the
+  // old /find endpoint didn't — use it to disambiguate e.g. Portland, OR
+  // from Portland, ME instead of silently collapsing both to "Portland, US".
+  const formatCityLabel = (city) =>
+    city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`;
+
+
   useEffect(() => {
     localStorage.setItem('recentWeatherSearches', JSON.stringify(recentSearches));
   }, [recentSearches]);
@@ -81,12 +88,27 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
     }
     try {
       const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+      // OpenWeather's old /data/2.5/find endpoint is deprecated for newer
+      // API keys — this is the Geocoding API, its replacement. Different
+      // response shape: a plain array (not {list: [...]}), no `id` field
+      // (synthesized from lat/lon below, which is guaranteed unique), and
+      // it gives us `state` for free — useful for telling apart e.g.
+      // Portland, OR from Portland, ME.
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/find?q=${query}&type=like&sort=population&cnt=5&appid=${apiKey}`
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${apiKey}`
       );
       const data = await response.json();
-      if (data.list) {
-        setSuggestions(data.list.map((item) => ({ name: item.name, country: item.sys.country, id: item.id })));
+      if (Array.isArray(data)) {
+        setSuggestions(
+          data.map((item) => ({
+            id: `${item.lat},${item.lon}`,
+            name: item.name,
+            state: item.state,
+            country: item.country,
+            lat: item.lat,
+            lon: item.lon,
+          }))
+        );
       }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
@@ -139,7 +161,7 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
     })),
     ...suggestions.map((city) => ({
       id: `opt-sugg-${city.id}`,
-      action: () => handleSuggestionClick(`${city.name}, ${city.country}`),
+      action: () => handleSuggestionClick(formatCityLabel(city)),
     })),
     ...recentSearches.map((city, i) => ({
       id: `opt-recent-${i}`,
@@ -236,7 +258,7 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
                 type="button"
                 onClick={() => setSearchTerm('')}
                 aria-label="Clear search"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20"
+                className="absolute right-1.5 top-1/2 transform -translate-y-1/2 z-20 p-2.5 rounded-full hover:bg-black/5 transition-colors"
                 style={{ color: 'var(--ink-500)' }}
               >
                 <CloseIcon />
@@ -294,7 +316,7 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
                     aria-selected={active}
                     onClick={() => { onFavoriteSelect(`${fav.name}, ${fav.country}`); setShowSuggestions(false); setHighlightedIndex(-1); }}
                     onMouseEnter={() => setHighlightedIndex(flatItems.findIndex((it) => it.id === optionId))}
-                    className="w-full text-left px-4 py-2.5 rounded-xl transition-colors flex items-center justify-between"
+                    className="w-full text-left px-4 py-3 rounded-xl transition-colors flex items-center justify-between"
                     style={{ background: active ? 'var(--paper-100)' : 'transparent' }}
                   >
                     <span className="font-medium text-sm" style={{ color: 'var(--ink-900)' }}>{fav.name}, {fav.country}</span>
@@ -320,13 +342,13 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
                     id={optionId}
                     role="option"
                     aria-selected={active}
-                    onClick={() => handleSuggestionClick(`${city.name}, ${city.country}`)}
+                    onClick={() => handleSuggestionClick(formatCityLabel(city))}
                     onMouseEnter={() => setHighlightedIndex(flatItems.findIndex((it) => it.id === optionId))}
-                    className="w-full text-left px-4 py-2.5 rounded-xl transition-colors flex items-center gap-3"
+                    className="w-full text-left px-4 py-3 rounded-xl transition-colors flex items-center gap-3"
                     style={{ background: active ? 'var(--paper-100)' : 'transparent' }}
                   >
                     <MapPinIcon />
-                    <span className="font-medium text-sm" style={{ color: 'var(--ink-900)' }}>{city.name}, {city.country}</span>
+                    <span className="font-medium text-sm" style={{ color: 'var(--ink-900)' }}>{formatCityLabel(city)}</span>
                   </button>
                 );
               })}
@@ -337,7 +359,11 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
             <div className="p-3">
               <div className="flex justify-between items-center px-2 py-1 mb-1">
                 <h3 className="text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--ink-500)' }}>Recent</h3>
-                <button onClick={clearRecentSearches} className="text-xs font-medium hover:underline" style={{ color: 'var(--ink-500)' }}>
+                <button
+                  onClick={clearRecentSearches}
+                  className="text-xs font-medium hover:underline p-2 -m-2 rounded"
+                  style={{ color: 'var(--ink-500)' }}
+                >
                   Clear
                 </button>
               </div>
@@ -352,7 +378,7 @@ const SearchBar = ({ onSearch, onLocationClick, favorites, onFavoriteSelect, uni
                     aria-selected={active}
                     onClick={() => handleSuggestionClick(city)}
                     onMouseEnter={() => setHighlightedIndex(flatItems.findIndex((it) => it.id === optionId))}
-                    className="w-full text-left px-4 py-2.5 rounded-xl transition-colors flex items-center gap-3"
+                    className="w-full text-left px-4 py-3 rounded-xl transition-colors flex items-center gap-3"
                     style={{ background: active ? 'var(--paper-100)' : 'transparent' }}
                   >
                     <span className="text-sm" style={{ color: 'var(--ink-700)' }}>{city}</span>

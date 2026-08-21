@@ -2,16 +2,15 @@ import React from 'react';
 import WeatherIcon from './WeatherIcon';
 import useCountUp from '../hooks/useCountUp';
 import { formatCityTime, formatCityDate } from '../utils/cityTime';
+import { celsiusToDisplay, msToDisplay, windUnitLabel } from '../utils/units';
 
 const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite }) => {
   const animatedTemp = useCountUp(data?.main?.temp ?? 0);
 
-  // The API is fetched with units=<unit> already, so data.main.temp and
-  // data.wind.speed arrive pre-converted (Celsius/m/s for metric,
-  // Fahrenheit/mph for imperial). No client-side math needed here —
-  // applying the C->F formula on top of an already-Fahrenheit value was
-  // the source of a real display bug (e.g. an actual 75°F rendering as
-  // 167°F). We only ever format/round what the API already gave us.
+  // Data is always fetched in metric — `unit` only affects how it's
+  // displayed, converted fresh on every render via utils/units.js. This
+  // is what makes the °C/°F toggle instant: no refetch, just reformatting
+  // the same underlying Celsius value already in memory.
   const formatTemperature = (temp) => `${toDisplayValue(temp)}°`;
 
   // The hero number gets the unit letter explicitly — it's the one value
@@ -20,9 +19,9 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
   // which scale it's in.
   const formatHeroTemperature = (temp) => `${toDisplayValue(temp)}°${unit === 'metric' ? 'C' : 'F'}`;
 
-  const toDisplayValue = (temp) => Math.round(temp);
+  const toDisplayValue = (temp) => Math.round(celsiusToDisplay(temp, unit));
 
-  const formatWindSpeed = (speed) => `${Math.round(speed)} ${unit === 'metric' ? 'm/s' : 'mph'}`;
+  const formatWindSpeed = (speed) => `${Math.round(msToDisplay(speed, unit))} ${windUnitLabel(unit)}`;
 
   // Sunrise/sunset and "today's date" must reflect the searched city's
   // own clock, not the viewer's device timezone — see utils/cityTime.js.
@@ -103,7 +102,7 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
                 onClick={() => unit !== 'metric' && onToggleUnit('metric')}
                 aria-pressed={unit === 'metric'}
                 aria-label="Celsius"
-                className="px-2.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
+                className="px-3 py-2.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
                 style={{
                   background: unit === 'metric' ? 'var(--ink-700)' : 'transparent',
                   color: unit === 'metric' ? '#fff' : 'var(--ink-500)',
@@ -115,7 +114,7 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
                 onClick={() => unit !== 'imperial' && onToggleUnit('imperial')}
                 aria-pressed={unit === 'imperial'}
                 aria-label="Fahrenheit"
-                className="px-2.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
+                className="px-3 py-2.5 rounded-full text-xs font-mono font-medium transition-all active:scale-95"
                 style={{
                   background: unit === 'imperial' ? 'var(--ink-700)' : 'transparent',
                   color: unit === 'imperial' ? '#fff' : 'var(--ink-500)',
@@ -128,7 +127,7 @@ const CurrentWeather = ({ data, unit, onToggleUnit, isFavorite, onToggleFavorite
               onClick={onToggleFavorite}
               aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               aria-pressed={isFavorite}
-              className="p-2.5 rounded-full transition-colors"
+              className="p-3 rounded-full transition-colors"
               style={{
                 background: isFavorite ? 'var(--amber)' : 'var(--paper-100)',
                 color: isFavorite ? '#fff' : 'var(--ink-500)',
